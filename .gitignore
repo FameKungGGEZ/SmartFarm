@@ -1,0 +1,50 @@
+# =====================================================================
+# .gitignore — SmartFarm AI Server V2
+# =====================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Photos / generated images (อย่า commit ภาพจริงขึ้น git)
+photos/*.jpg
+photos/*.jpeg
+photos/*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Docker
+*.dockerignore

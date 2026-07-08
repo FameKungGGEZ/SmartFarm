@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartFarm AI Server V2</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ===== Layout ===== */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* ===== Header ===== */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #1e293b;
+    }
+    header .logo { font-size: 2rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+    header h1 span {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: #64748b;
+      margin-left: 8px;
+    }
+
+    /* ===== Status Badge ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .badge.online  { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .badge.offline { background: #2d0000; color: #f87171; border: 1px solid #7f1d1d; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ===== Stat Cards ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px 20px;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: #475569; }
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card.healthy  .value { color: #4ade80; }
+    .stat-card.unhealthy .value { color: #f87171; }
+    .stat-card.total    .value { color: #60a5fa; }
+    .stat-card.status-card .value {
+      font-size: 0.88rem;
+      font-weight: 400;
+      color: #cbd5e1;
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+
+    /* ===== Photo Grid ===== */
+    .photos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 640px) { .photos-grid { grid-template-columns: 1fr; } }
+
+    .photo-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .photo-card .photo-header {
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #94a3b8;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .photo-card img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      background: #0f172a;
+    }
+    .photo-card .photo-footer {
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ===== Zone Overlay Canvas ===== */
+    .photo-wrap {
+      position: relative;
+      line-height: 0;
+      background: #0f172a;
+      aspect-ratio: 4/3;      /* คงกรอบเสมอ แม้ไม่มีรูป */
+      width: 100%;
+    }
+    .photo-wrap img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    /* ข้อความ placeholder เมื่อยังไม่มีภาพ */
+    .photo-wrap .no-image-label {
+      position: absolute;
+      top: 10px; left: 0; right: 0;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #64748b;
+      pointer-events: none;
+      z-index: 1;
+      display: none;
+    }
+    .photo-wrap.no-image .no-image-label { display: block; }
+    #zone-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ===== Zone toggle btn ===== */
+    .btn-zone-toggle {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #94a3b8;
+      transition: background .15s, color .15s;
+    }
+    .btn-zone-toggle.active {
+      background: #052e16;
+      color: #4ade80;
+      border-color: #166534;
+    }
+    .btn-calibrate {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #60a5fa;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .btn-calibrate:hover { background: #1e293b; }
+
+    /* ===== Last Scan ===== */
+    .last-scan {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #475569;
+      margin-bottom: 10px;
+    }
+
+    /* ===== Refresh Button ===== */
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">🌿</div>
+    <div>
+      <h1>SmartFarm AI Server <span>V2</span></h1>
+    </div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <span class="badge online" id="server-badge">
+        <span class="dot"></span> Server Online
+      </span>
+    </div>
+  </header>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card healthy">
+      <div class="label">🟢 Healthy</div>
+      <div class="value" id="stat-healthy">—</div>
+    </div>
+    <div class="stat-card unhealthy">
+      <div class="label">🔴 UnHealthy</div>
+      <div class="value" id="stat-unhealthy">—</div>
+    </div>
+    <div class="stat-card total">
+      <div class="label">📊 Total</div>
+      <div class="value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card status-card" style="grid-column: span 1;">
+      <div class="label">📡 Status</div>
+      <div class="value" id="stat-status">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- Last Scan -->
+  <div class="last-scan" id="last-scan">Last Scan: —</div>
+
+  <!-- Photos -->
+  <div class="photos-grid">
+
+    <!-- Latest Photo + Zone Overlay -->
+    <div class="photo-card">
+      <div class="photo-header">
+        📷 Latest Photo (ESP32-CAM)
+        <span style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+          <a href="/calibrate" class="btn-calibrate" target="_blank">📐 ปรับโซน</a>
+          <button class="btn-zone-toggle active" id="zone-toggle-btn"
+                  onclick="toggleZones()">🟩 แสดงโซน</button>
+        </span>
+      </div>
+      <div class="photo-wrap" id="latest-wrap">
+        <img id="latest-photo" src="/latest.jpg" alt="Latest"
+             onload="onLatestLoaded()"
+             onerror="onLatestError()" />
+        <div class="no-image-label">ยังไม่มีภาพจาก ESP32-CAM — แสดงเฉพาะกรอบโซน</div>
+        <canvas id="zone-canvas"></canvas>
+      </div>
+      <div class="photo-footer">
+        <span>ภาพล่าสุดจาก ESP32-CAM</span>
+        <span id="zone-count" style="color:#4ade80;font-weight:600;"></span>
+      </div>
+    </div>
+
+    <!-- Result Photo -->
+    <div class="photo-card">
+      <div class="photo-header">🔍 Result Photo (Analysis)</div>
+      <div class="photo-wrap">
+        <img id="result-photo" src="/result.jpg" alt="Result"
+             onerror="this.style.opacity='0.2'" />
+      </div>
+      <div class="photo-footer">ภาพผลการวิเคราะห์พร้อมกรอบสี</div>
+    </div>
+
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-primary" onclick="refresh()">🔄 Refresh</button>
+    <button class="btn btn-ghost" onclick="openResult()">🔍 ดู Result</button>
+  </div>
+
+</div>
+
+<script>
+  // สีโซน (CSS hex)
+  const ZONE_COLORS = [
+    "#22c55e","#f97316","#3b82f6",
+    "#a855f7","#eab308","#ef4444",
+    "#06b6d4","#ec4899",
+  ];
+
+  let _zones = [];
+  let _zonesVisible = true;
+
+  // -------------------------------------------------------
+  // โหลดโซนจาก /api/zones แล้ว redraw
+  // -------------------------------------------------------
+  async function loadZones() {
+    try {
+      const r = await fetch("/api/zones");
+      const d = await r.json();
+      _zones = d.zones || [];
+      const countEl = document.getElementById("zone-count");
+      if (countEl) countEl.textContent = `${_zones.length} โซน`;
+      drawZones();
+    } catch (_) {}
+  }
+
+  // -------------------------------------------------------
+  // วาดโซนบน canvas overlay
+  // -------------------------------------------------------
+  function drawZones() {
+    const canvas = document.getElementById("zone-canvas");
+    if (!canvas) return;
+    // ใช้ขนาดของกล่อง .photo-wrap เป็นหลัก — เชื่อถือได้แม้ยังไม่มีภาพ
+    // (wrap มี aspect-ratio 4/3 คงที่ ทำให้ canvas วาดกรอบได้เสมอ)
+    const wrap = document.getElementById("latest-wrap");
+    const rect = wrap.getBoundingClientRect();
+    canvas.width  = wrap.offsetWidth  || rect.width  || 320;
+    canvas.height = wrap.offsetHeight || rect.height || 240;
+
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!_zonesVisible || _zones.length === 0) return;
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    _zones.forEach((z, i) => {
+      const px = z.x * W;
+      const py = z.y * H;
+      const pw = z.w * W;
+      const ph = z.h * H;
+      const color = ZONE_COLORS[i % ZONE_COLORS.length];
+
+      // พื้นโปร่งแสง
+      ctx.fillStyle = color + "28";
+      ctx.fillRect(px, py, pw, ph);
+
+      // เส้นกรอบ
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 3]);
+      ctx.strokeRect(px, py, pw, ph);
+      ctx.setLineDash([]);
+
+      // เลขโซน — วงกลมพื้นหลัง
+      const label = String(z.id);
+      const cx = px + pw / 2;
+      const cy = py + ph / 2;
+      const r  = Math.min(pw, ph) * 0.18;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(r, 14), 0, Math.PI * 2);
+      ctx.fill();
+
+      // ตัวเลข
+      ctx.fillStyle = "#fff";
+      ctx.font = `bold ${Math.max(r, 12)}px Segoe UI, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, cx, cy);
+    });
+  }
+
+  // -------------------------------------------------------
+  // Toggle แสดง/ซ่อนโซน
+  // -------------------------------------------------------
+  function toggleZones() {
+    _zonesVisible = !_zonesVisible;
+    const btn = document.getElementById("zone-toggle-btn");
+    if (_zonesVisible) {
+      btn.textContent = "🟩 แสดงโซน";
+      btn.classList.add("active");
+    } else {
+      btn.textContent = "⬜ ซ่อนโซน";
+      btn.classList.remove("active");
+    }
+    drawZones();
+  }
+
+  // -------------------------------------------------------
+  // ดึงสถิติจาก /stats
+  // -------------------------------------------------------
+  async function loadStats() {
+    try {
+      const res = await fetch("/stats");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      document.getElementById("stat-healthy").textContent   = data.healthy ?? "—";
+      document.getElementById("stat-unhealthy").textContent = data.unhealthy ?? "—";
+      document.getElementById("stat-total").textContent     = data.total ?? "—";
+      document.getElementById("stat-status").textContent    = data.status ?? "—";
+      document.getElementById("last-scan").textContent      =
+        "Last Scan: " + (data.last_scan ?? "ยังไม่มี");
+
+      const badge = document.getElementById("server-badge");
+      badge.className = "badge online";
+      badge.innerHTML = '<span class="dot"></span> Server Online';
+    } catch (err) {
+      const badge = document.getElementById("server-badge");
+      badge.className = "badge offline";
+      badge.innerHTML = '<span class="dot"></span> Server Offline';
+    }
+  }
+
+  // -------------------------------------------------------
+  // เมื่อโหลดภาพล่าสุดสำเร็จ → ซ่อน placeholder + วาดโซน
+  // -------------------------------------------------------
+  function onLatestLoaded() {
+    const img  = document.getElementById("latest-photo");
+    const wrap = document.getElementById("latest-wrap");
+    img.style.opacity = "1";
+    wrap.classList.remove("no-image");
+    drawZones();
+  }
+
+  // -------------------------------------------------------
+  // เมื่อยังไม่มีภาพ (404) → โชว์ placeholder แต่ยังวาดกรอบโซน
+  // -------------------------------------------------------
+  function onLatestError() {
+    const img  = document.getElementById("latest-photo");
+    const wrap = document.getElementById("latest-wrap");
+    img.style.opacity = "0";           // ซ่อนไอคอนรูปเสีย
+    wrap.classList.add("no-image");    // โชว์ข้อความ + พื้นหลังเข้ม
+    drawZones();                       // ยังวาดกรอบทั้ง 6 โซนไว้
+  }
+
+  // -------------------------------------------------------
+  // Reload ภาพ พร้อม cache-busting (handler ตั้งไว้ใน HTML แล้ว)
+  // -------------------------------------------------------
+  function reloadImages() {
+    const ts = Date.now();
+    document.getElementById("latest-photo").src = "/latest.jpg?" + ts;
+    document.getElementById("result-photo").src = "/result.jpg?" + ts;
+  }
+
+  // -------------------------------------------------------
+  // Refresh ทุกอย่าง
+  // -------------------------------------------------------
+  function refresh() {
+    loadStats();
+    reloadImages();
+  }
+
+  function openResult() {
+    window.open("/result.jpg", "_blank");
+  }
+
+  // -------------------------------------------------------
+  // redraw โซนเมื่อ resize (responsive)
+  // -------------------------------------------------------
+  window.addEventListener("resize", drawZones);
+
+  // -------------------------------------------------------
+  // Init
+  // -------------------------------------------------------
+  loadStats();
+  loadZones();         // โหลดโซนและวาดบนภาพ
+  reloadImages();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

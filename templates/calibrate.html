@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartFarm — ปรับโซน Crop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+
+    /* ===== Header ===== */
+    header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 20px; padding-bottom: 16px;
+      border-bottom: 1px solid #1e293b;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #f1f5f9; }
+    header h1 span { color: #22c55e; }
+    .btn-back {
+      margin-left: auto;
+      padding: 6px 14px; border-radius: 6px;
+      background: #1e293b; color: #94a3b8;
+      text-decoration: none; font-size: .85rem;
+      transition: background .2s;
+    }
+    .btn-back:hover { background: #334155; color: #e2e8f0; }
+
+    /* ===== Layout ===== */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+    }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Canvas wrapper ===== */
+    .canvas-wrap {
+      position: relative;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+      border: 1px solid #334155;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .canvas-hint {
+      position: absolute; bottom: 8px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.6);
+      color: #94a3b8; font-size: .75rem;
+      padding: 4px 10px; border-radius: 20px;
+      pointer-events: none; white-space: nowrap;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card h2 {
+      font-size: .9rem; font-weight: 600;
+      color: #94a3b8; margin-bottom: 12px;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+
+    /* ===== Zone List ===== */
+    .zone-list { display: flex; flex-direction: column; gap: 8px; }
+    .zone-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      background: #0f1117;
+      border-radius: 6px;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .zone-item.active {
+      border-color: var(--color);
+      background: #1a2235;
+    }
+    .zone-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      background: var(--color);
+      flex-shrink: 0;
+    }
+    .zone-label { font-size: .85rem; font-weight: 600; flex: 1; }
+    .zone-coords { font-size: .72rem; color: #64748b; font-family: monospace; }
+
+    /* ===== Controls ===== */
+    .controls { display: flex; flex-direction: column; gap: 8px; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .field label {
+      display: block;
+      font-size: .72rem; color: #64748b;
+      margin-bottom: 3px;
+    }
+    .field input[type="number"] {
+      width: 100%;
+      padding: 5px 8px;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      color: #e2e8f0;
+      font-size: .82rem;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #22c55e;
+    }
+
+    /* ===== Buttons ===== */
+    .btn {
+      padding: 9px 16px;
+      border: none; border-radius: 7px;
+      font-size: .88rem; font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary {
+      background: #22c55e; color: #0f1117;
+      width: 100%;
+    }
+    .btn-primary:hover { opacity: .9; }
+    .btn-secondary {
+      background: #1e293b; color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover { background: #334155; }
+    .btn-danger {
+      background: #ef4444; color: #fff;
+    }
+    .btn-danger:hover { opacity: .85; }
+    .btn-row { display: flex; gap: 8px; }
+
+    /* ===== Toast ===== */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #22c55e; color: #0f1117;
+      padding: 10px 18px; border-radius: 8px;
+      font-size: .875rem; font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.error { background: #ef4444; color: #fff; }
+
+    /* ===== Status ===== */
+    #status-msg {
+      font-size: .78rem; color: #64748b;
+      text-align: center; margin-top: 4px;
+    }
+
+    .add-row { display: flex; gap: 6px; }
+    .add-row input {
+      flex: 1; padding: 5px 8px;
+      background: #0f1117;
+      border: 1px solid #334155; border-radius: 5px;
+      color: #e2e8f0; font-size: .82rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>🌿</div>
+    <h1>SmartFarm <span>— ปรับโซน Crop</span></h1>
+    <a href="/" class="btn-back">← Dashboard</a>
+  </header>
+
+  <div class="layout">
+
+    <!-- ===== Canvas ===== -->
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="canvas-hint">คลิก+ลากเพื่อย้ายโซน · ลากมุมเพื่อปรับขนาด</div>
+    </div>
+
+    <!-- ===== Sidebar ===== -->
+    <div class="sidebar">
+
+      <!-- โซนทั้งหมด -->
+      <div class="card">
+        <h2>โซนทั้งหมด</h2>
+        <div class="zone-list" id="zone-list"></div>
+        <div style="margin-top:10px;" class="add-row">
+          <button class="btn btn-secondary" id="btn-add-zone" style="width:100%;font-size:.8rem;">+ เพิ่มโซน</button>
+        </div>
+      </div>
+
+      <!-- แก้ไขโซน -->
+      <div class="card" id="editor-card">
+        <h2>แก้ไขโซนที่เลือก</h2>
+        <div class="controls">
+          <div class="field-row">
+            <div class="field">
+              <label>X (0–1)</label>
+              <input type="number" id="inp-x" min="0" max="1" step="0.01" />
+            </div>
+            <div class="field">
+              <label>Y (0–1)</label>
+              <input type="number" id="inp-y" min="0" max="1" step="0.01" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>กว้าง W (0–1)</label>
+              <input type="number" id="inp-w" min="0.01" max="1" step="0.01" />
+            </div>
+            <div class="field">
+              <label>สูง H (0–1)</label>
+              <input type="number" id="inp-h" min="0.01" max="1" step="0.01" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-delete" style="flex:1;">🗑 ลบ</button>
+          </div>
+        </div>
+        <div id="status-msg"></div>
+      </div>
+
+      <!-- บันทึก -->
+      <div class="card">
+        <h2>บันทึก</h2>
+        <button class="btn btn-primary" id="btn-save">💾 บันทึกโซนทั้งหมด</button>
+        <div style="margin-top:8px;" class="btn-row">
+          <button class="btn btn-secondary" style="flex:1;" id="btn-reset">↺ ค่าเริ่มต้น</button>
+          <button class="btn btn-secondary" style="flex:1;" id="btn-refresh-img">🔄 ภาพใหม่</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// =====================================================================
+// SmartFarm Calibrate — Zone Editor
+// =====================================================================
+
+// สีโซน (HEX)
+const COLORS = [
+  "#22c55e", "#f97316", "#3b82f6",
+  "#a855f7", "#eab308", "#ef4444",
+  "#06b6d4", "#ec4899", "#14b8a6", "#f59e0b",
+];
+
+// Handle size (px บน canvas display)
+const HANDLE = 10;
+
+let zones   = [];        // [{id,x,y,w,h}, ...]
+let selIdx  = -1;        // โซนที่เลือก
+let imgEl   = null;      // HTMLImageElement
+let imgLoaded = false;
+
+// Drag state
+let drag = null;
+// drag.type: "move" | "tl" | "tr" | "bl" | "br"
+
+const canvas  = document.getElementById("canvas");
+const ctx     = canvas.getContext("2d");
+
+// -------------------------------------------------------
+// โหลดโซนจาก server
+// -------------------------------------------------------
+async function loadZones() {
+  try {
+    const r = await fetch("/api/zones");
+    const d = await r.json();
+    zones = d.zones;
+    renderSidebar();
+    draw();
+  } catch (e) {
+    showToast("โหลดโซนไม่สำเร็จ", true);
+  }
+}
+
+// -------------------------------------------------------
+// โหลดภาพล่าสุด
+// -------------------------------------------------------
+function loadImage() {
+  imgLoaded = false;
+  imgEl = new Image();
+  imgEl.onload = () => {
+    imgLoaded = true;
+    // ปรับ canvas ให้ตรงกับ aspect ratio ภาพ
+    const cw = canvas.clientWidth || canvas.parentElement.clientWidth;
+    canvas.width  = imgEl.naturalWidth;
+    canvas.height = imgEl.naturalHeight;
+    draw();
+  };
+  imgEl.onerror = () => {
+    // ถ้าไม่มีภาพ วาด placeholder
+    canvas.width  = 640;
+    canvas.height = 480;
+    draw();
+  };
+  imgEl.src = "/latest.jpg?t=" + Date.now();
+}
+
+// -------------------------------------------------------
+// วาด canvas
+// -------------------------------------------------------
+function draw() {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // พื้นหลัง
+  if (imgLoaded && imgEl) {
+    ctx.drawImage(imgEl, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#475569";
+    ctx.font = "18px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.fillText("ส่งภาพจาก ESP32 ก่อนเพื่อดู preview", W/2, H/2);
+  }
+
+  // วาดโซน
+  zones.forEach((z, i) => {
+    const px = z.x * W;
+    const py = z.y * H;
+    const pw = z.w * W;
+    const ph = z.h * H;
+    const color = COLORS[i % COLORS.length];
+    const isSel = i === selIdx;
+
+    // กรอบ
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = isSel ? 2.5 : 1.5;
+    ctx.setLineDash(isSel ? [] : [6, 3]);
+    ctx.strokeRect(px, py, pw, ph);
+    ctx.setLineDash([]);
+
+    // พื้น (โปร่งแสง)
+    ctx.fillStyle = color + (isSel ? "30" : "15");
+    ctx.fillRect(px, py, pw, ph);
+
+    // เลขโซน
+    ctx.fillStyle = color;
+    ctx.font = `bold ${isSel ? 16 : 14}px Segoe UI`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(`#${z.id}`, px + 6, py + 6);
+
+    // handles (มุมทั้ง 4) เฉพาะโซนที่เลือก
+    if (isSel) {
+      const hx = HANDLE / 2;
+      [
+        [px,      py     ],  // tl
+        [px+pw,   py     ],  // tr
+        [px,      py+ph  ],  // bl
+        [px+pw,   py+ph  ],  // br
+      ].forEach(([hpx, hpy]) => {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(hpx - hx, hpy - hx, HANDLE, HANDLE);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(hpx - hx, hpy - hx, HANDLE, HANDLE);
+      });
+    }
+  });
+}
+
+// -------------------------------------------------------
+// canvas coordinate → fraction
+// -------------------------------------------------------
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = (e.clientX - rect.left) * scaleX;
+  const cy = (e.clientY - rect.top)  * scaleY;
+  return { cx, cy, fx: cx / canvas.width, fy: cy / canvas.height };
+}
+
+function hitHandle(px, py, hx, hy) {
+  return Math.abs(px - hx) <= HANDLE && Math.abs(py - hy) <= HANDLE;
+}
+
+// -------------------------------------------------------
+// Mouse / Touch events
+// -------------------------------------------------------
+function onPointerDown(e) {
+  e.preventDefault();
+  const { cx, cy, fx, fy } = canvasPos(e.type === "touchstart" ? e.touches[0] : e);
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // ตรวจ handle ของโซนที่เลือกก่อน
+  if (selIdx >= 0) {
+    const z = zones[selIdx];
+    const px = z.x * W, py = z.y * H;
+    const pw = z.w * W, ph = z.h * H;
+    const corners = [
+      { type: "tl", hx: px,    hy: py    },
+      { type: "tr", hx: px+pw, hy: py    },
+      { type: "bl", hx: px,    hy: py+ph },
+      { type: "br", hx: px+pw, hy: py+ph },
+    ];
+    for (const c of corners) {
+      if (hitHandle(cx, cy, c.hx, c.hy)) {
+        drag = { type: c.type, idx: selIdx, startFx: fx, startFy: fy,
+                 ox: z.x, oy: z.y, ow: z.w, oh: z.h };
+        return;
+      }
+    }
+  }
+
+  // ตรวจว่าคลิกอยู่ในโซนไหน (จากบนลงล่าง ถ้าเลือกไว้แล้วให้ใช้ก่อน)
+  let hit = -1;
+  // ลองโซนที่เลือกก่อน
+  if (selIdx >= 0) {
+    const z = zones[selIdx];
+    if (fx >= z.x && fx <= z.x+z.w && fy >= z.y && fy <= z.y+z.h) {
+      hit = selIdx;
+    }
+  }
+  if (hit < 0) {
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const z = zones[i];
+      if (fx >= z.x && fx <= z.x+z.w && fy >= z.y && fy <= z.y+z.h) {
+        hit = i; break;
+      }
+    }
+  }
+
+  if (hit >= 0) {
+    selIdx = hit;
+    const z = zones[hit];
+    drag = { type: "move", idx: hit, startFx: fx, startFy: fy,
+             ox: z.x, oy: z.y, ow: z.w, oh: z.h };
+    renderSidebar();
+    updateEditor();
+    draw();
+  } else {
+    selIdx = -1;
+    renderSidebar();
+    updateEditor();
+    draw();
+  }
+}
+
+function onPointerMove(e) {
+  if (!drag) return;
+  e.preventDefault();
+  const { fx, fy } = canvasPos(e.type === "touchmove" ? e.touches[0] : e);
+  const dx = fx - drag.startFx;
+  const dy = fy - drag.startFy;
+  const z = zones[drag.idx];
+
+  if (drag.type === "move") {
+    z.x = clamp(drag.ox + dx, 0, 1 - z.w);
+    z.y = clamp(drag.oy + dy, 0, 1 - z.h);
+  } else if (drag.type === "tl") {
+    const nx = clamp(drag.ox + dx, 0, drag.ox + drag.ow - 0.02);
+    const ny = clamp(drag.oy + dy, 0, drag.oy + drag.oh - 0.02);
+    z.w = drag.ow - (nx - drag.ox);
+    z.h = drag.oh - (ny - drag.oy);
+    z.x = nx; z.y = ny;
+  } else if (drag.type === "tr") {
+    z.w = clamp(drag.ow + dx, 0.02, 1 - drag.ox);
+    const ny = clamp(drag.oy + dy, 0, drag.oy + drag.oh - 0.02);
+    z.h = drag.oh - (ny - drag.oy);
+    z.y = ny;
+  } else if (drag.type === "bl") {
+    const nx = clamp(drag.ox + dx, 0, drag.ox + drag.ow - 0.02);
+    z.w = drag.ow - (nx - drag.ox);
+    z.x = nx;
+    z.h = clamp(drag.oh + dy, 0.02, 1 - drag.oy);
+  } else if (drag.type === "br") {
+    z.w = clamp(drag.ow + dx, 0.02, 1 - drag.ox);
+    z.h = clamp(drag.oh + dy, 0.02, 1 - drag.oy);
+  }
+
+  // round ทศนิยม 3 ตำแหน่ง
+  ["x","y","w","h"].forEach(k => { z[k] = Math.round(z[k] * 1000) / 1000; });
+
+  updateEditor();
+  draw();
+}
+
+function onPointerUp(e) { drag = null; }
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+canvas.addEventListener("mousedown",  onPointerDown);
+canvas.addEventListener("mousemove",  onPointerMove);
+canvas.addEventListener("mouseup",    onPointerUp);
+canvas.addEventListener("mouseleave", onPointerUp);
+canvas.addEventListener("touchstart", onPointerDown, { passive: false });
+canvas.addEventListener("touchmove",  onPointerMove, { passive: false });
+canvas.addEventListener("touchend",   onPointerUp);
+
+// -------------------------------------------------------
+// Sidebar — รายการโซน
+// -------------------------------------------------------
+function renderSidebar() {
+  const list = document.getElementById("zone-list");
+  list.innerHTML = "";
+  zones.forEach((z, i) => {
+    const color = COLORS[i % COLORS.length];
+    const item = document.createElement("div");
+    item.className = "zone-item" + (i === selIdx ? " active" : "");
+    item.style.setProperty("--color", color);
+    item.innerHTML = `
+      <div class="zone-dot"></div>
+      <span class="zone-label">โซน #${z.id}</span>
+      <span class="zone-coords">x:${z.x.toFixed(2)} y:${z.y.toFixed(2)}</span>
+    `;
+    item.addEventListener("click", () => {
+      selIdx = i;
+      renderSidebar();
+      updateEditor();
+      draw();
+    });
+    list.appendChild(item);
+  });
+}
+
+// -------------------------------------------------------
+// Editor — input fields ของโซนที่เลือก
+// -------------------------------------------------------
+function updateEditor() {
+  const card = document.getElementById("editor-card");
+  if (selIdx < 0) {
+    card.style.opacity = "0.4";
+    card.style.pointerEvents = "none";
+    return;
+  }
+  card.style.opacity = "1";
+  card.style.pointerEvents = "";
+  const z = zones[selIdx];
+  document.getElementById("inp-x").value = z.x;
+  document.getElementById("inp-y").value = z.y;
+  document.getElementById("inp-w").value = z.w;
+  document.getElementById("inp-h").value = z.h;
+}
+
+["inp-x","inp-y","inp-w","inp-h"].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    if (selIdx < 0) return;
+    const z = zones[selIdx];
+    z.x = parseFloat(document.getElementById("inp-x").value) || 0;
+    z.y = parseFloat(document.getElementById("inp-y").value) || 0;
+    z.w = parseFloat(document.getElementById("inp-w").value) || 0.1;
+    z.h = parseFloat(document.getElementById("inp-h").value) || 0.1;
+    renderSidebar();
+    draw();
+  });
+});
+
+document.getElementById("btn-delete").addEventListener("click", () => {
+  if (selIdx < 0) return;
+  if (!confirm(`ลบโซน #${zones[selIdx].id} ?`)) return;
+  zones.splice(selIdx, 1);
+  selIdx = Math.min(selIdx, zones.length - 1);
+  renderSidebar();
+  updateEditor();
+  draw();
+});
+
+// -------------------------------------------------------
+// เพิ่มโซน
+// -------------------------------------------------------
+document.getElementById("btn-add-zone").addEventListener("click", () => {
+  const maxId = zones.reduce((m, z) => Math.max(m, z.id), 0);
+  zones.push({ id: maxId + 1, x: 0.1, y: 0.1, w: 0.3, h: 0.3 });
+  selIdx = zones.length - 1;
+  renderSidebar();
+  updateEditor();
+  draw();
+});
+
+// -------------------------------------------------------
+// บันทึก
+// -------------------------------------------------------
+document.getElementById("btn-save").addEventListener("click", async () => {
+  try {
+    const r = await fetch("/api/zones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ zones }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast(`✅ บันทึก ${d.count} โซนสำเร็จ`);
+    } else {
+      showToast(d.error || "บันทึกไม่สำเร็จ", true);
+    }
+  } catch (e) {
+    showToast("Network error", true);
+  }
+});
+
+// -------------------------------------------------------
+// รีเซ็ต / โหลดภาพใหม่
+// -------------------------------------------------------
+document.getElementById("btn-reset").addEventListener("click", async () => {
+  if (!confirm("รีเซ็ตโซนกลับเป็นค่าเริ่มต้น (6 ต้น 2×3) ?")) return;
+  // ลบ zones.json แล้วโหลดใหม่ (server จะส่ง default)
+  await fetch("/api/zones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ zones: [
+      {"id":1,"x":0.02,"y":0.02,"w":0.38,"h":0.30},
+      {"id":2,"x":0.60,"y":0.02,"w":0.38,"h":0.30},
+      {"id":3,"x":0.02,"y":0.35,"w":0.38,"h":0.30},
+      {"id":4,"x":0.60,"y":0.35,"w":0.38,"h":0.30},
+      {"id":5,"x":0.02,"y":0.68,"w":0.38,"h":0.30},
+      {"id":6,"x":0.60,"y":0.68,"w":0.38,"h":0.30},
+    ] }),
+  });
+  await loadZones();
+  showToast("↺ รีเซ็ตแล้ว");
+});
+
+document.getElementById("btn-refresh-img").addEventListener("click", () => {
+  loadImage();
+  showToast("🔄 โหลดภาพใหม่");
+});
+
+// -------------------------------------------------------
+// Toast
+// -------------------------------------------------------
+let toastTimer = null;
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 2800);
+}
+
+// -------------------------------------------------------
+// Init
+// -------------------------------------------------------
+updateEditor();
+loadImage();
+loadZones();
+
+// redraw เมื่อ window resize
+window.addEventListener("resize", draw);
+</script>
+</body>
+</html>
