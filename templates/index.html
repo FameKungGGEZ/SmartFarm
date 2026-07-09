@@ -407,42 +407,47 @@
       </div>
     </div>
 
-    <!-- Control Panel -->
+    <!-- Control Panel - READ ONLY -->
     <div style="border-top:1px solid #334155;padding-top:20px;">
+      <div style="text-align:center;margin-bottom:12px;font-size:0.85rem;color:#94a3b8;">
+        📱 ควบคุมผ่าน Blynk App เท่านั้น
+      </div>
+
       <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-        <!-- Auto Mode Toggle -->
-        <div class="control-item">
+        <!-- Auto Mode Display (Read-only) -->
+        <div class="control-item" style="opacity:0.7;">
           <label class="toggle-switch">
-            <input type="checkbox" id="ctrl-auto-mode" onchange="toggleControl('auto_mode', this.checked)">
-            <span class="toggle-slider"></span>
+            <input type="checkbox" id="ctrl-auto-mode" disabled>
+            <span class="toggle-slider" style="cursor:not-allowed;"></span>
           </label>
           <span class="control-label">🤖 โหมดอัตโนมัติ</span>
         </div>
       </div>
 
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <!-- Spray Control -->
-        <div class="control-item">
+        <!-- Spray Display (Read-only) -->
+        <div class="control-item" style="opacity:0.7;">
           <label class="toggle-switch">
-            <input type="checkbox" id="ctrl-spray" onchange="toggleControl('spray', this.checked)">
-            <span class="toggle-slider"></span>
+            <input type="checkbox" id="ctrl-spray" disabled>
+            <span class="toggle-slider" style="cursor:not-allowed;"></span>
           </label>
           <span class="control-label" id="spray-label">💨 สเปรย์/ควัน</span>
         </div>
 
-        <!-- Fan Control -->
-        <div class="control-item">
+        <!-- Fan Display (Read-only) -->
+        <div class="control-item" style="opacity:0.7;">
           <label class="toggle-switch">
-            <input type="checkbox" id="ctrl-fan" onchange="toggleControl('fan', this.checked)">
-            <span class="toggle-slider"></span>
+            <input type="checkbox" id="ctrl-fan" disabled>
+            <span class="toggle-slider" style="cursor:not-allowed;"></span>
           </label>
           <span class="control-label" id="fan-label">🌀 พัดลม</span>
         </div>
 
-        <!-- Motor Control -->
-        <button class="btn-control" id="btn-motor" onclick="toggleMotor()">
-          🎚️ สลับสแลน (<span id="motor-state">—</span>)
-        </button>
+        <!-- Motor State Display (Read-only) -->
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#1e293b;border:1px solid #334155;border-radius:8px;opacity:0.7;">
+          <span>🎚️ สแลน:</span>
+          <span id="motor-state" style="color:#4ade80;font-weight:600;">—</span>
+        </div>
       </div>
 
       <!-- Pending Status -->
@@ -702,7 +707,7 @@
     };
   }
 
-  // อัพเดทการแสดงผลเซ็นเซอร์
+  // อัพเดทการแสดงผลเซ็นเซอร์ (READ-ONLY)
   function updateSensorDisplay(data) {
     // Sensor values
     document.getElementById("sensor-air-temp").textContent =
@@ -718,7 +723,7 @@
     document.getElementById("sensor-update-time").textContent =
       "อัพเดท: " + (data.last_update_time || "—");
 
-    // Control states
+    // Control states (READ-ONLY - แสดงสถานะจาก Blynk)
     document.getElementById("ctrl-auto-mode").checked = data.auto_mode || false;
     document.getElementById("ctrl-spray").checked = data.spray || false;
     document.getElementById("ctrl-fan").checked = data.fan || false;
@@ -727,12 +732,6 @@
     const motorState = data.motor_state || "out";
     document.getElementById("motor-state").textContent =
       motorState === "out" ? "กาง" : "ม้วน";
-
-    // Disable manual controls in auto mode
-    const isAuto = data.auto_mode || false;
-    document.getElementById("ctrl-spray").disabled = isAuto;
-    document.getElementById("ctrl-fan").disabled = isAuto;
-    document.getElementById("btn-motor").disabled = isAuto || data.motor_working;
 
     // Pending status
     let pendingText = "";
@@ -756,46 +755,7 @@
     document.getElementById("pending-status").textContent = pendingText;
   }
 
-  // Toggle control (จาก Web UI)
-  async function toggleControl(type, value) {
-    console.log(`📤 Sending control: ${type} = ${value}`);
-    try {
-      const res = await fetch(`/api/control/${type}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: value })
-      });
-      const data = await res.json();
-      console.log(`📥 Received response:`, data);
-      if (data.ok && data.state) {
-        updateSensorDisplay(data.state);
-      }
-    } catch (err) {
-      console.error("Control error:", err);
-      alert("ไม่สามารถควบคุมได้ กรุณาลองใหม่");
-    }
-  }
-
-  // Toggle motor
-  async function toggleMotor() {
-    try {
-      const res = await fetch("/api/control/motor_toggle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: true })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        document.getElementById("btn-motor").disabled = true;
-        setTimeout(() => {
-          document.getElementById("btn-motor").disabled = false;
-        }, 2000);
-      }
-    } catch (err) {
-      console.error("Motor toggle error:", err);
-      alert("ไม่สามารถควบคุมมอเตอร์ได้");
-    }
-  }
+  // ฟังก์ชันควบคุมถูกปิดใช้งาน - ควบคุมผ่าน Blynk App เท่านั้น
 
   // โหลดข้อมูลเซ็นเซอร์ครั้งแรก (fallback ถ้า SSE ไม่ทำงาน)
   async function loadSensorData() {
