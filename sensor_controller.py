@@ -46,13 +46,17 @@ class SensorData:
         """อัพเดทข้อมูลเซ็นเซอร์"""
         with self._lock:
             if 'water_temp' in data:
-                self.water_temp = float(data['water_temp'])
+                val = data['water_temp']
+                self.water_temp = float(val) if val is not None else 0.0
             if 'air_temp' in data:
-                self.air_temp = float(data['air_temp'])
+                val = data['air_temp']
+                self.air_temp = float(val) if val is not None else 0.0
             if 'humidity' in data:
-                self.humidity = float(data['humidity'])
+                val = data['humidity']
+                self.humidity = float(val) if val is not None else 0.0
             if 'light_value' in data:
-                self.light_value = int(data['light_value'])
+                val = data['light_value']
+                self.light_value = int(val) if val is not None else 0
             if 'auto_mode' in data:
                 self.auto_mode = bool(data['auto_mode'])
             if 'spray' in data:
