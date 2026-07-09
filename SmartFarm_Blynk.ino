@@ -76,8 +76,8 @@ const char* PREFS_NS = "smartfarm";
 enum MotorAction { MOTOR_IDLE, MOTOR_RUN_IN, MOTOR_RUN_OUT };
 MotorAction motorAction = MOTOR_IDLE;
 unsigned long motorStartMs = 0;
-const unsigned long MOTOR_OUT_MS = 1000;
-const unsigned long MOTOR_IN_MS  = 1000;
+const unsigned long MOTOR_OUT_MS = 1300;  // เปิดสแลน (กางออก) = 1.3 วินาที
+const unsigned long MOTOR_IN_MS  = 1900;  // ปิดสแลน (ม้วนเข้า) = 1.9 วินาที
 
 // Update interval
 unsigned long lastUpdateMs = 0;
