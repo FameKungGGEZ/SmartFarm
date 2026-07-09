@@ -40,7 +40,7 @@ const char* SERVER_URL = "https://smartfarm-9epw.onrender.com";
 bool autoMode=true;  // เปิด Auto Mode เป็นค่าเริ่มต้น
 bool spray=true, fan=true;
 bool motorWorking=false;
-String motorState="out";
+String motorState="in";  // เริ่มต้นเป็น "in" (ปิด)
 
 int lightValue;
 float waterTemp,airTemp,hum;
@@ -149,7 +149,7 @@ void loadState(){
   spray       = prefs.getBool("spray",true);
   fan         = prefs.getBool("fan",true);
   shadeClosed = prefs.getBool("shadeClosed",false);
-  motorState  = prefs.getString("motorState","out");
+  motorState  = prefs.getString("motorState","in");  // Default = "in" (ปิด)
   prefs.end();
 }
 
