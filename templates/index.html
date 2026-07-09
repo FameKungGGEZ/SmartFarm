@@ -758,6 +758,7 @@
 
   // Toggle control (จาก Web UI)
   async function toggleControl(type, value) {
+    console.log(`📤 Sending control: ${type} = ${value}`);
     try {
       const res = await fetch(`/api/control/${type}`, {
         method: "POST",
@@ -765,6 +766,7 @@
         body: JSON.stringify({ value: value })
       });
       const data = await res.json();
+      console.log(`📥 Received response:`, data);
       if (data.ok && data.state) {
         updateSensorDisplay(data.state);
       }
