@@ -25,13 +25,13 @@ DHT dht(DHTPIN,DHTTYPE);
 const char* ssid="TP-wifi";
 const char* password="";
 
-// URL ของ Web Server (แก้เป็น URL จริงหลัง deploy)
+// URL ของ Web Server
 const char* SERVER_URL = "https://smartfarm-9epw.onrender.com";
 
 // ========================================
 // ตัวแปรระบบ
 // ========================================
-bool autoMode=false;
+bool autoMode=true;  // เปิด Auto Mode เป็นค่าเริ่มต้น
 bool spray=true, fan=true;
 bool motorWorking=false;
 String motorState="out";
@@ -82,6 +82,7 @@ const unsigned long UPDATE_INTERVAL = 2000; // ส่งข้อมูลทุ
 // ========================================
 void saveState(){
   prefs.begin(PREFS_NS,false);
+  prefs.putBool("autoMode",autoMode);
   prefs.putBool("spray",spray);
   prefs.putBool("fan",fan);
   prefs.putBool("shadeClosed",shadeClosed);
@@ -91,6 +92,7 @@ void saveState(){
 
 void loadState(){
   prefs.begin(PREFS_NS,true);
+  autoMode    = prefs.getBool("autoMode",true);  // Default = true
   spray       = prefs.getBool("spray",true);
   fan         = prefs.getBool("fan",true);
   shadeClosed = prefs.getBool("shadeClosed",false);
@@ -113,6 +115,7 @@ void startMotor(bool goOut){
     digitalWrite(RELAY_MOTOR1,HIGH);
     digitalWrite(RELAY_MOTOR2,LOW);
   }
+  Serial.println("🎚️ มอเตอร์เริ่มทำงาน...");
 }
 
 void handleMotor(){
@@ -125,6 +128,7 @@ void handleMotor(){
     motorAction = MOTOR_IDLE;
     motorWorking = false;
     saveState();
+    Serial.printf("✅ มอเตอร์หยุด: %s\n", motorState.c_str());
   }
 }
 
@@ -158,6 +162,7 @@ void autoControlFan(){
      digitalWrite(RELAY_FAN,!fan);
      fanPending=false;
      saveState();
+     Serial.printf("🌀 พัดลม: %s (Auto)\n", fan?"เปิด":"ปิด");
    }
  }else{
    fanPending=false;
@@ -179,6 +184,7 @@ void autoControlSpray(){
      digitalWrite(RELAY_SMOKE,!spray);
      sprayPending=false;
      saveState();
+     Serial.printf("💨 สเปรย์: %s (Auto)\n", spray?"เปิด":"ปิด");
    }
  }else{
    sprayPending=false;
@@ -201,6 +207,7 @@ void autoShadeControl(){
      shadeClosed=desired;
      shadePending=false;
      saveState();
+     Serial.printf("☀️ สแลน: %s (Auto)\n", desired?"ปิด":"เปิด");
    }
  }else{
    shadePending=false;
@@ -250,37 +257,39 @@ void sendSensorDataAndGetControls(){
     if(!error && resDoc["ok"]){
       JsonObject controls = resDoc["controls"];
 
+      // Auto mode สามารถสลับได้เสมอ
+      bool webAutoMode = controls["auto_mode"];
+      if(webAutoMode != autoMode){
+        autoMode = webAutoMode;
+        fanPending = false;
+        sprayPending = false;
+        shadePending = false;
+        saveState();
+        Serial.printf("🤖 โหมด: %s (จากเว็บ)\n", autoMode?"AUTO":"MANUAL");
+      }
+
       // อัพเดทการควบคุมจาก Web UI (เฉพาะตอนไม่ได้อยู่ใน auto mode)
       if(!autoMode){
-        bool webSpray = controls["spray"] | spray;
-        bool webFan = controls["fan"] | fan;
+        bool webSpray = controls["spray"];
+        bool webFan = controls["fan"];
 
         if(webSpray != spray){
           spray = webSpray;
           digitalWrite(RELAY_SMOKE, !spray);
           saveState();
+          Serial.printf("💨 สเปรย์: %s (จากเว็บ)\n", spray?"เปิด":"ปิด");
         }
 
         if(webFan != fan){
           fan = webFan;
           digitalWrite(RELAY_FAN, !fan);
           saveState();
+          Serial.printf("🌀 พัดลม: %s (จากเว็บ)\n", fan?"เปิด":"ปิด");
         }
-      }
 
-      // Auto mode สามารถสลับได้เสมอ
-      bool webAutoMode = controls["auto_mode"] | autoMode;
-      if(webAutoMode != autoMode){
-        autoMode = webAutoMode;
-        fanPending = false;
-        sprayPending = false;
-        shadePending = false;
-      }
-
-      // Motor toggle (ถ้า Web สั่งและไม่ได้อยู่ใน auto mode)
-      if(!autoMode && !motorWorking){
-        bool motorToggle = controls["motor_toggle"] | false;
-        if(motorToggle){
+        // Motor toggle
+        bool motorToggle = controls["motor_toggle"];
+        if(motorToggle && !motorWorking){
           startMotor(motorState == "out" ? false : true);
         }
       }
@@ -370,6 +379,7 @@ void setup(){
 
  Serial.println("\n🌿 SmartFarm V3.0 - Web Server Edition");
  Serial.println("========================================");
+ Serial.printf("โหมดเริ่มต้น: %s\n", autoMode?"AUTO":"MANUAL");
 }
 
 // ========================================
