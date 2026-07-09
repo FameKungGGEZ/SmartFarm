@@ -140,8 +140,22 @@ void readSensors(){
  int raw=analogRead(MCP_PIN);
  float v=raw*3.3/4095.0;
  waterTemp=(v-0.4)/0.0195;
+
  hum=dht.readHumidity();
  airTemp=dht.readTemperature();
+
+ // ป้องกัน nan (ถ้า DHT ไม่ทำงาน)
+ if(isnan(hum)) {
+   hum = 0.0;
+   Serial.println("⚠️ DHT Humidity error - using 0.0");
+ }
+ if(isnan(airTemp)) {
+   airTemp = 0.0;
+   Serial.println("⚠️ DHT Temperature error - using 0.0");
+ }
+ if(isnan(waterTemp)) {
+   waterTemp = 0.0;
+ }
 }
 
 // ========================================
