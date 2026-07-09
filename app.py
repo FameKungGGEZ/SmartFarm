@@ -481,7 +481,7 @@ def api_sensor_update():
     # อัพเดทข้อมูลเซ็นเซอร์
     sensor_controller.update_sensor_data(data)
 
-    # ส่งคำสั่งควบคุมกลับไป (ถ้ามีการเปลี่ยนแปลงจาก Web UI)
+    # ส่งคำสั่งควบคุมกลับไป (ใช้ค่าจาก Web UI ถ้ามีการเปลี่ยนแปลง)
     current_state = sensor_controller.get_sensor_data()
 
     logger.info(
@@ -490,14 +490,17 @@ def api_sensor_update():
         f"Light={data.get('light_value', 0)}"
     )
 
+    # ส่งคำสั่งควบคุมกลับไปยัง ESP32
+    response_controls = {
+        "auto_mode": current_state['auto_mode'],
+        "spray": current_state['spray'],
+        "fan": current_state['fan'],
+        "motor_toggle": current_state.get('motor_toggle', False)
+    }
+
     return jsonify({
         "ok": True,
-        "controls": {
-            "auto_mode": current_state['auto_mode'],
-            "spray": current_state['spray'],
-            "fan": current_state['fan'],
-            "motor_toggle": False  # จะเป็น True เฉพาะตอนกดปุ่ม
-        }
+        "controls": response_controls
     })
 
 

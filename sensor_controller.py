@@ -20,7 +20,7 @@ class SensorData:
         self.light_value: int = 0
 
         # สถานะการควบคุม
-        self.auto_mode: bool = False
+        self.auto_mode: bool = True  # เริ่มต้นเป็น True (Auto Mode)
         self.spray: bool = True
         self.fan: bool = True
         self.shade_closed: bool = False
@@ -31,6 +31,10 @@ class SensorData:
         self.fan_pending: bool = False
         self.spray_pending: bool = False
         self.shade_pending: bool = False
+
+        # Flag สำหรับการควบคุมจาก Web (ต้องส่งไปยัง ESP32)
+        self.web_control_changed: bool = False
+        self.motor_toggle_requested: bool = False
 
         # เวลาอัพเดทล่าสุด
         self.last_update: float = time.time()
@@ -87,9 +91,23 @@ class SensorData:
                 'fan_pending': self.fan_pending,
                 'spray_pending': self.spray_pending,
                 'shade_pending': self.shade_pending,
+                'motor_toggle': self.motor_toggle_requested,
                 'last_update': self.last_update,
                 'last_update_time': datetime.fromtimestamp(self.last_update).strftime('%Y-%m-%d %H:%M:%S')
             }
+
+    def get_controls_for_esp32(self) -> dict:
+        """ดึงข้อมูลควบคุมที่จะส่งกลับไปยัง ESP32"""
+        with self._lock:
+            controls = {
+                'auto_mode': self.auto_mode,
+                'spray': self.spray,
+                'fan': self.fan,
+                'motor_toggle': self.motor_toggle_requested
+            }
+            # Reset motor toggle flag หลังส่งไปแล้ว
+            self.motor_toggle_requested = False
+            return controls
 
 
 class SensorController:
@@ -128,18 +146,22 @@ class SensorController:
         with self._lock:
             if control_type == 'spray':
                 self.sensor_data.spray = value
+                self.sensor_data.web_control_changed = True
             elif control_type == 'fan':
                 self.sensor_data.fan = value
+                self.sensor_data.web_control_changed = True
             elif control_type == 'auto_mode':
                 self.sensor_data.auto_mode = value
                 # Reset pending states เมื่อสลับโหมด
                 self.sensor_data.fan_pending = False
                 self.sensor_data.spray_pending = False
                 self.sensor_data.shade_pending = False
+                self.sensor_data.web_control_changed = True
             elif control_type == 'motor_toggle':
                 # Toggle motor state
                 if not self.sensor_data.motor_working:
-                    self.sensor_data.motor_working = True
+                    self.sensor_data.motor_toggle_requested = True
+                    self.sensor_data.web_control_changed = True
 
             self.sensor_data.last_update = time.time()
 
