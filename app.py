@@ -474,34 +474,48 @@ def api_sensor_update():
             }
         }
     """
-    data = request.get_json(force=True, silent=True)
-    if not data:
-        return jsonify({"error": "ต้องส่ง JSON body"}), 400
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "ต้องส่ง JSON body"}), 400
 
-    # อัพเดทข้อมูลเซ็นเซอร์
-    sensor_controller.update_sensor_data(data)
+        # ตรวจสอบและแปลงค่า nan/null
+        for key in ['water_temp', 'air_temp', 'humidity', 'light_value']:
+            if key in data:
+                val = data[key]
+                # แปลง nan, null, None เป็น 0
+                if val is None or (isinstance(val, float) and (val != val)):  # val != val คือการเช็ค NaN
+                    data[key] = 0.0
+                    logger.warning(f"⚠️ {key} is nan/null, using 0.0")
 
-    # ส่งคำสั่งควบคุมกลับไป (ใช้ค่าจาก Web UI ถ้ามีการเปลี่ยนแปลง)
-    current_state = sensor_controller.get_sensor_data()
+        # อัพเดทข้อมูลเซ็นเซอร์
+        sensor_controller.update_sensor_data(data)
 
-    logger.info(
-        f"📊 Sensor Update: Temp={data.get('air_temp', 0):.1f}°C "
-        f"Hum={data.get('humidity', 0):.1f}% "
-        f"Light={data.get('light_value', 0)}"
-    )
+        # ส่งคำสั่งควบคุมกลับไป (ใช้ค่าจาก Web UI ถ้ามีการเปลี่ยนแปลง)
+        current_state = sensor_controller.get_sensor_data()
 
-    # ส่งคำสั่งควบคุมกลับไปยัง ESP32
-    response_controls = {
-        "auto_mode": current_state['auto_mode'],
-        "spray": current_state['spray'],
-        "fan": current_state['fan'],
-        "motor_toggle": current_state.get('motor_toggle', False)
-    }
+        logger.info(
+            f"📊 Sensor Update: Temp={data.get('air_temp', 0):.1f}°C "
+            f"Hum={data.get('humidity', 0):.1f}% "
+            f"Light={data.get('light_value', 0)}"
+        )
 
-    return jsonify({
-        "ok": True,
-        "controls": response_controls
-    })
+        # ส่งคำสั่งควบคุมกลับไปยัง ESP32
+        response_controls = {
+            "auto_mode": current_state['auto_mode'],
+            "spray": current_state['spray'],
+            "fan": current_state['fan'],
+            "motor_toggle": current_state.get('motor_toggle', False)
+        }
+
+        return jsonify({
+            "ok": True,
+            "controls": response_controls
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Sensor update error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/sensor/data", methods=["GET"])
