@@ -73,11 +73,8 @@ Preferences prefs;
 const char* PREFS_NS = "smartfarm";
 
 // Motor control
-enum MotorAction { MOTOR_IDLE, MOTOR_RUN_IN, MOTOR_RUN_OUT };
-MotorAction motorAction = MOTOR_IDLE;
-unsigned long motorStartMs = 0;
-const unsigned long MOTOR_OUT_MS = 1300;  // เปิดสแลน (กางออก) = 1.3 วินาที
-const unsigned long MOTOR_IN_MS  = 1900;  // ปิดสแลน (ม้วนเข้า) = 1.9 วินาที
+const unsigned long MOTOR_OUT_MS = 1240;  // เปิดสแลน (กางออก) = 1.24 วินาที
+const unsigned long MOTOR_IN_MS  = 850;   // ปิดสแลน (ม้วนเข้า) = 0.85 วินาที
 
 // Update interval
 unsigned long lastUpdateMs = 0;
@@ -154,36 +151,38 @@ void loadState(){
 }
 
 // ========================================
-// Motor Control
+// Motor Control (แบบง่าย ใช้ delay)
 // ========================================
 void startMotor(bool goOut){
   if(motorWorking) return;
   motorWorking = true;
-  motorAction = goOut ? MOTOR_RUN_OUT : MOTOR_RUN_IN;
-  motorStartMs = millis();
+
+  Serial.println("🎚️ มอเตอร์เริ่มทำงาน...");
+
   if(goOut){
+    // เปิดสแลน (กางออก)
     digitalWrite(RELAY_MOTOR1,LOW);
     digitalWrite(RELAY_MOTOR2,HIGH);
+    delay(MOTOR_OUT_MS);
+    motorState = "out";
   }else{
+    // ปิดสแลน (ม้วนเข้า)
     digitalWrite(RELAY_MOTOR1,HIGH);
     digitalWrite(RELAY_MOTOR2,LOW);
+    delay(MOTOR_IN_MS);
+    motorState = "in";
   }
-  Serial.println("🎚️ มอเตอร์เริ่มทำงาน...");
+
+  // หยุดมอเตอร์
+  digitalWrite(RELAY_MOTOR1,HIGH);
+  digitalWrite(RELAY_MOTOR2,HIGH);
+
+  motorWorking = false;
+  saveState();
+  Serial.printf("✅ มอเตอร์หยุด: %s\n", motorState.c_str());
 }
 
-void handleMotor(){
-  if(motorAction==MOTOR_IDLE) return;
-  unsigned long dur = (motorAction==MOTOR_RUN_OUT)? MOTOR_OUT_MS : MOTOR_IN_MS;
-  if(millis()-motorStartMs >= dur){
-    digitalWrite(RELAY_MOTOR1,HIGH);
-    digitalWrite(RELAY_MOTOR2,HIGH);
-    motorState = (motorAction==MOTOR_RUN_OUT)? "out":"in";
-    motorAction = MOTOR_IDLE;
-    motorWorking = false;
-    saveState();
-    Serial.printf("✅ มอเตอร์หยุด: %s\n", motorState.c_str());
-  }
-}
+// ไม่ต้องใช้ handleMotor() แล้ว (ลบฟังก์ชันเดิมออก)
 
 // ========================================
 // Sensor Reading
@@ -424,7 +423,6 @@ void setup(){
 // ========================================
 void loop(){
  Blynk.run();  // รัน Blynk
- handleMotor();
 
  unsigned long now = millis();
 
