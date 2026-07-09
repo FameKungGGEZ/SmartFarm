@@ -2,6 +2,10 @@
 // ควบคุมผ่าน Blynk App
 // แสดงสถานะผ่าน Web Server
 
+#define BLYNK_TEMPLATE_ID "TMPL6NUBqUsHj"
+#define BLYNK_TEMPLATE_NAME "SmartFarm"
+#define BLYNK_AUTH_TOKEN "aE8bHdNu6YcwX7TIVTyy33FKaOgWrGXu"
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -29,8 +33,6 @@ const char* password="";
 // URL ของ Web Server
 const char* SERVER_URL = "https://smartfarm-9epw.onrender.com";
 
-// Blynk Token
-char auth[] = "aE8bHdNu6YcwX7TIVTyy33FKaOgWrGXu";
 
 // ========================================
 // ตัวแปรระบบ
@@ -401,8 +403,7 @@ void setup(){
  connectWiFi();
 
  // เชื่อมต่อ Blynk
- Blynk.config(auth);
- Blynk.connect();
+ Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
 
  Serial.println("\n🌿 SmartFarm V3.1 - Blynk Control + Web Monitor");
  Serial.println("========================================");
