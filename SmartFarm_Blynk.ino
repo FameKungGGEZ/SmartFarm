@@ -116,11 +116,17 @@ BLYNK_WRITE(V7) {
   }
 }
 
-// V8 - Motor Button
+// V8 - Motor Button (Push)
 BLYNK_WRITE(V8) {
-  if(!autoMode && !motorWorking && param.asInt() == 1) {
+  int btnValue = param.asInt();
+  Serial.printf("🎚️ [Blynk] V8 button pressed: %d\n", btnValue);
+
+  // กดปุ่มได้ทั้ง Auto และ Manual (แต่ต้องไม่มีมอเตอร์ทำงานอยู่)
+  if(!motorWorking && btnValue == 1) {
     startMotor(motorState == "out" ? false : true);
-    Serial.println("🎚️ [Blynk] สลับสแลน");
+    Serial.printf("🎚️ [Blynk] สลับสแลนจาก %s\n", motorState.c_str());
+  } else {
+    Serial.printf("⚠️ ไม่สามารถสลับสแลน: motorWorking=%d, btnValue=%d\n", motorWorking, btnValue);
   }
 }
 
