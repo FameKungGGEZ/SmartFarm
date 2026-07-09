@@ -203,6 +203,114 @@
     }
     .btn-calibrate:hover { background: #1e293b; }
 
+    /* ===== Sensor Boxes ===== */
+    .sensor-box {
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 14px;
+      transition: border-color .2s;
+    }
+    .sensor-box:hover { border-color: #475569; }
+    .sensor-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .sensor-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #60a5fa;
+      line-height: 1;
+    }
+
+    /* ===== Control Items ===== */
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      transition: border-color .2s;
+    }
+    .control-item:hover { border-color: #475569; }
+    .control-label {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+    .control-label.pending {
+      color: #fbbf24;
+    }
+
+    /* ===== Toggle Switch ===== */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .3s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #64748b;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #22c55e;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+      background-color: white;
+    }
+    input:disabled + .toggle-slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ===== Control Button ===== */
+    .btn-control {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #cbd5e1;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-control:hover {
+      background: #1e293b;
+      border-color: #475569;
+    }
+    .btn-control:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     /* ===== Last Scan ===== */
     .last-scan {
       text-align: center;
@@ -269,6 +377,76 @@
     <div class="stat-card status-card" style="grid-column: span 1;">
       <div class="label">📡 Status</div>
       <div class="value" id="stat-status">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- ===== เพิ่มส่วนแสดงข้อมูลเซ็นเซอร์และการควบคุม ===== -->
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:28px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:1.2rem;font-weight:600;color:#f1f5f9;margin:0;">⚙️ ระบบควบคุมและเซ็นเซอร์</h2>
+      <span style="font-size:0.75rem;color:#64748b;" id="sensor-update-time">—</span>
+    </div>
+
+    <!-- Sensor Data Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:24px;">
+      <div class="sensor-box">
+        <div class="sensor-label">🌡️ อุณหภูมิอากาศ</div>
+        <div class="sensor-value" id="sensor-air-temp">—</div>
+      </div>
+      <div class="sensor-box">
+        <div class="sensor-label">💧 ความชื้น</div>
+        <div class="sensor-value" id="sensor-humidity">—</div>
+      </div>
+      <div class="sensor-box">
+        <div class="sensor-label">💦 อุณหภูมิน้ำ</div>
+        <div class="sensor-value" id="sensor-water-temp">—</div>
+      </div>
+      <div class="sensor-box">
+        <div class="sensor-label">☀️ ค่าแสง</div>
+        <div class="sensor-value" id="sensor-light">—</div>
+      </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div style="border-top:1px solid #334155;padding-top:20px;">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <!-- Auto Mode Toggle -->
+        <div class="control-item">
+          <label class="toggle-switch">
+            <input type="checkbox" id="ctrl-auto-mode" onchange="toggleControl('auto_mode', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="control-label">🤖 โหมดอัตโนมัติ</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <!-- Spray Control -->
+        <div class="control-item">
+          <label class="toggle-switch">
+            <input type="checkbox" id="ctrl-spray" onchange="toggleControl('spray', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="control-label" id="spray-label">💨 สเปรย์/ควัน</span>
+        </div>
+
+        <!-- Fan Control -->
+        <div class="control-item">
+          <label class="toggle-switch">
+            <input type="checkbox" id="ctrl-fan" onchange="toggleControl('fan', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="control-label" id="fan-label">🌀 พัดลม</span>
+        </div>
+
+        <!-- Motor Control -->
+        <button class="btn-control" id="btn-motor" onclick="toggleMotor()">
+          🎚️ สลับสแลน (<span id="motor-state">—</span>)
+        </button>
+      </div>
+
+      <!-- Pending Status -->
+      <div style="margin-top:12px;font-size:0.75rem;color:#94a3b8;" id="pending-status"></div>
     </div>
   </div>
 
@@ -495,11 +673,147 @@
   window.addEventListener("resize", drawZones);
 
   // -------------------------------------------------------
+  // -------------------------------------------------------
+  // Sensor & Control Management
+  // -------------------------------------------------------
+  let eventSource = null;
+
+  // เชื่อมต่อ SSE สำหรับ real-time sensor updates
+  function connectSSE() {
+    if (eventSource) {
+      eventSource.close();
+    }
+
+    eventSource = new EventSource("/api/events");
+
+    eventSource.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        updateSensorDisplay(data);
+      } catch (e) {
+        console.error("Parse SSE error:", e);
+      }
+    };
+
+    eventSource.onerror = function() {
+      console.log("SSE connection lost, reconnecting...");
+      eventSource.close();
+      setTimeout(connectSSE, 5000);
+    };
+  }
+
+  // อัพเดทการแสดงผลเซ็นเซอร์
+  function updateSensorDisplay(data) {
+    // Sensor values
+    document.getElementById("sensor-air-temp").textContent =
+      data.air_temp ? data.air_temp.toFixed(1) + " °C" : "—";
+    document.getElementById("sensor-humidity").textContent =
+      data.humidity ? data.humidity.toFixed(1) + " %" : "—";
+    document.getElementById("sensor-water-temp").textContent =
+      data.water_temp ? data.water_temp.toFixed(1) + " °C" : "—";
+    document.getElementById("sensor-light").textContent =
+      data.light_value || "—";
+
+    // Update time
+    document.getElementById("sensor-update-time").textContent =
+      "อัพเดท: " + (data.last_update_time || "—");
+
+    // Control states
+    document.getElementById("ctrl-auto-mode").checked = data.auto_mode || false;
+    document.getElementById("ctrl-spray").checked = data.spray || false;
+    document.getElementById("ctrl-fan").checked = data.fan || false;
+
+    // Motor state
+    const motorState = data.motor_state || "out";
+    document.getElementById("motor-state").textContent =
+      motorState === "out" ? "กาง" : "ม้วน";
+
+    // Disable manual controls in auto mode
+    const isAuto = data.auto_mode || false;
+    document.getElementById("ctrl-spray").disabled = isAuto;
+    document.getElementById("ctrl-fan").disabled = isAuto;
+    document.getElementById("btn-motor").disabled = isAuto || data.motor_working;
+
+    // Pending status
+    let pendingText = "";
+    const sprayLabel = document.getElementById("spray-label");
+    const fanLabel = document.getElementById("fan-label");
+
+    sprayLabel.classList.remove("pending");
+    fanLabel.classList.remove("pending");
+
+    if (data.fan_pending) {
+      pendingText += "⏳ พัดลมกำลังรอยืนยันค่า... ";
+      fanLabel.classList.add("pending");
+    }
+    if (data.spray_pending) {
+      pendingText += "⏳ สเปรย์กำลังรอยืนยันค่า... ";
+      sprayLabel.classList.add("pending");
+    }
+    if (data.shade_pending) {
+      pendingText += "⏳ สแลนกำลังรอยืนยันค่า... ";
+    }
+    document.getElementById("pending-status").textContent = pendingText;
+  }
+
+  // Toggle control (จาก Web UI)
+  async function toggleControl(type, value) {
+    try {
+      const res = await fetch(`/api/control/${type}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: value })
+      });
+      const data = await res.json();
+      if (data.ok && data.state) {
+        updateSensorDisplay(data.state);
+      }
+    } catch (err) {
+      console.error("Control error:", err);
+      alert("ไม่สามารถควบคุมได้ กรุณาลองใหม่");
+    }
+  }
+
+  // Toggle motor
+  async function toggleMotor() {
+    try {
+      const res = await fetch("/api/control/motor_toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: true })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById("btn-motor").disabled = true;
+        setTimeout(() => {
+          document.getElementById("btn-motor").disabled = false;
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Motor toggle error:", err);
+      alert("ไม่สามารถควบคุมมอเตอร์ได้");
+    }
+  }
+
+  // โหลดข้อมูลเซ็นเซอร์ครั้งแรก (fallback ถ้า SSE ไม่ทำงาน)
+  async function loadSensorData() {
+    try {
+      const res = await fetch("/api/sensor/data");
+      const data = await res.json();
+      updateSensorDisplay(data);
+    } catch (err) {
+      console.error("Load sensor error:", err);
+    }
+  }
+
+  // -------------------------------------------------------
   // Init
   // -------------------------------------------------------
   loadStats();
   loadZones();         // โหลดโซนและวาดบนภาพ
   reloadImages();
+  loadSensorData();    // โหลดข้อมูลเซ็นเซอร์
+  connectSSE();        // เชื่อมต่อ real-time updates
   setInterval(refresh, 5000);
 </script>
 </body>

@@ -36,6 +36,7 @@ from image_processor import find_fixed_zone_crops, save_result_image
 from session import SessionManager
 from dashboard import dashboard_bp, init_dashboard, update_stats
 from zones import load_zones, save_zones, validate_zones
+from sensor_controller import get_controller
 
 # -------------------------------------------------------
 # ตั้งค่า Logging — แสดงผลใน Console แบบ SmartFarm V2
@@ -63,6 +64,9 @@ app = Flask(__name__)
 
 # Session Manager: Thread-Safe, Auto Cleanup
 session_manager = SessionManager()
+
+# Sensor Controller: จัดการข้อมูลเซ็นเซอร์และการควบคุม
+sensor_controller = get_controller()
 
 # Stats shared กับ Dashboard
 _stats: dict = {
@@ -431,6 +435,144 @@ def api_set_zones():
 
     logger.info(f"📐 อัพเดตโซน: {len(zones)} โซน")
     return jsonify({"ok": True, "count": len(zones)})
+
+
+# =====================================================================
+# Sensor & Control API Routes — สำหรับ ESP32 ส่งข้อมูลเซ็นเซอร์และรับคำสั่งควบคุม
+# =====================================================================
+
+@app.route("/api/sensor/update", methods=["POST"])
+def api_sensor_update():
+    """
+    รับข้อมูลเซ็นเซอร์จาก ESP32
+
+    Request JSON:
+        {
+            "water_temp": 25.5,
+            "air_temp": 28.3,
+            "humidity": 65.2,
+            "light_value": 2500,
+            "auto_mode": false,
+            "spray": true,
+            "fan": true,
+            "shade_closed": false,
+            "motor_state": "out",
+            "motor_working": false,
+            "fan_pending": false,
+            "spray_pending": false,
+            "shade_pending": false
+        }
+
+    Response JSON:
+        {
+            "ok": true,
+            "controls": {
+                "auto_mode": false,
+                "spray": true,
+                "fan": true,
+                "motor_toggle": false
+            }
+        }
+    """
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "ต้องส่ง JSON body"}), 400
+
+    # อัพเดทข้อมูลเซ็นเซอร์
+    sensor_controller.update_sensor_data(data)
+
+    # ส่งคำสั่งควบคุมกลับไป (ถ้ามีการเปลี่ยนแปลงจาก Web UI)
+    current_state = sensor_controller.get_sensor_data()
+
+    logger.info(
+        f"📊 Sensor Update: Temp={data.get('air_temp', 0):.1f}°C "
+        f"Hum={data.get('humidity', 0):.1f}% "
+        f"Light={data.get('light_value', 0)}"
+    )
+
+    return jsonify({
+        "ok": True,
+        "controls": {
+            "auto_mode": current_state['auto_mode'],
+            "spray": current_state['spray'],
+            "fan": current_state['fan'],
+            "motor_toggle": False  # จะเป็น True เฉพาะตอนกดปุ่ม
+        }
+    })
+
+
+@app.route("/api/sensor/data", methods=["GET"])
+def api_sensor_data():
+    """
+    ดึงข้อมูลเซ็นเซอร์ล่าสุด (สำหรับ Web UI)
+
+    Response JSON:
+        ข้อมูลเซ็นเซอร์ทั้งหมด + สถานะการควบคุม
+    """
+    return jsonify(sensor_controller.get_sensor_data())
+
+
+@app.route("/api/control/<control_type>", methods=["POST"])
+def api_control(control_type):
+    """
+    ควบคุมอุปกรณ์จาก Web UI
+
+    Args:
+        control_type: "spray", "fan", "auto_mode", "motor_toggle"
+
+    Request JSON:
+        {"value": true/false}
+
+    Response JSON:
+        สถานะปัจจุบันทั้งหมด
+    """
+    data = request.get_json(force=True, silent=True)
+    if not data or 'value' not in data:
+        return jsonify({"error": "ต้องส่ง JSON body ที่มี field 'value'"}), 400
+
+    value = bool(data['value'])
+
+    # อัพเดทสถานะการควบคุม
+    current_state = sensor_controller.set_control(control_type, value)
+
+    logger.info(f"🎛  Control: {control_type} = {value}")
+
+    return jsonify({
+        "ok": True,
+        "state": current_state
+    })
+
+
+@app.route("/api/events")
+def api_events():
+    """
+    Server-Sent Events (SSE) สำหรับ real-time updates
+
+    ส่งข้อมูลเซ็นเซอร์แบบ real-time ไปยัง Web UI
+    """
+    def event_stream():
+        # ส่งข้อมูลปัจจุบันทันที
+        data = sensor_controller.get_sensor_data()
+        yield f"data: {jsonify(data).get_data(as_text=True)}\n\n"
+
+        # รอและส่งข้อมูลใหม่เมื่อมีการอัพเดท
+        last_update = data['last_update']
+        while True:
+            time.sleep(1)
+            current_data = sensor_controller.get_sensor_data()
+            if current_data['last_update'] != last_update:
+                yield f"data: {jsonify(current_data).get_data(as_text=True)}\n\n"
+                last_update = current_data['last_update']
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"
+        }
+    )
 
 
 # =====================================================================
