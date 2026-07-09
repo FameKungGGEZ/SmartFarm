@@ -258,39 +258,46 @@ void sendSensorDataAndGetControls(){
       JsonObject controls = resDoc["controls"];
 
       // Auto mode สามารถสลับได้เสมอ
-      bool webAutoMode = controls["auto_mode"];
-      if(webAutoMode != autoMode){
-        autoMode = webAutoMode;
-        fanPending = false;
-        sprayPending = false;
-        shadePending = false;
-        saveState();
-        Serial.printf("🤖 โหมด: %s (จากเว็บ)\n", autoMode?"AUTO":"MANUAL");
+      if(controls.containsKey("auto_mode")){
+        bool webAutoMode = controls["auto_mode"].as<bool>();
+        if(webAutoMode != autoMode){
+          autoMode = webAutoMode;
+          fanPending = false;
+          sprayPending = false;
+          shadePending = false;
+          saveState();
+          Serial.printf("🤖 โหมด: %s (จากเว็บ)\n", autoMode?"AUTO":"MANUAL");
+        }
       }
 
       // อัพเดทการควบคุมจาก Web UI (เฉพาะตอนไม่ได้อยู่ใน auto mode)
       if(!autoMode){
-        bool webSpray = controls["spray"];
-        bool webFan = controls["fan"];
-
-        if(webSpray != spray){
-          spray = webSpray;
-          digitalWrite(RELAY_SMOKE, !spray);
-          saveState();
-          Serial.printf("💨 สเปรย์: %s (จากเว็บ)\n", spray?"เปิด":"ปิด");
+        if(controls.containsKey("spray")){
+          bool webSpray = controls["spray"].as<bool>();
+          if(webSpray != spray){
+            spray = webSpray;
+            digitalWrite(RELAY_SMOKE, !spray);
+            saveState();
+            Serial.printf("💨 สเปรย์: %s (จากเว็บ)\n", spray?"เปิด":"ปิด");
+          }
         }
 
-        if(webFan != fan){
-          fan = webFan;
-          digitalWrite(RELAY_FAN, !fan);
-          saveState();
-          Serial.printf("🌀 พัดลม: %s (จากเว็บ)\n", fan?"เปิด":"ปิด");
+        if(controls.containsKey("fan")){
+          bool webFan = controls["fan"].as<bool>();
+          if(webFan != fan){
+            fan = webFan;
+            digitalWrite(RELAY_FAN, !fan);
+            saveState();
+            Serial.printf("🌀 พัดลม: %s (จากเว็บ)\n", fan?"เปิด":"ปิด");
+          }
         }
 
         // Motor toggle
-        bool motorToggle = controls["motor_toggle"];
-        if(motorToggle && !motorWorking){
-          startMotor(motorState == "out" ? false : true);
+        if(controls.containsKey("motor_toggle")){
+          bool motorToggle = controls["motor_toggle"].as<bool>();
+          if(motorToggle && !motorWorking){
+            startMotor(motorState == "out" ? false : true);
+          }
         }
       }
     }
