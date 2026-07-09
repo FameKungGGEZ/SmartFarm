@@ -121,12 +121,12 @@ BLYNK_WRITE(V8) {
   int btnValue = param.asInt();
   Serial.printf("🎚️ [Blynk] V8 button pressed: %d\n", btnValue);
 
-  // กดปุ่มได้ทั้ง Auto และ Manual (แต่ต้องไม่มีมอเตอร์ทำงานอยู่)
-  if(!motorWorking && btnValue == 1) {
+  // ปุ่ม Push อาจส่ง 255 หรือ 1 (ขึ้นอยู่กับ Blynk version)
+  if(!motorWorking && btnValue > 0) {
     startMotor(motorState == "out" ? false : true);
     Serial.printf("🎚️ [Blynk] สลับสแลนจาก %s\n", motorState.c_str());
-  } else {
-    Serial.printf("⚠️ ไม่สามารถสลับสแลน: motorWorking=%d, btnValue=%d\n", motorWorking, btnValue);
+  } else if(btnValue > 0) {
+    Serial.printf("⚠️ มอเตอร์กำลังทำงานอยู่\n");
   }
 }
 
@@ -411,19 +411,10 @@ void setup(){
  // เชื่อมต่อ Blynk
  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
 
- // หมุนสแลนเข้าสู่สถานะปิด (in) เสมอตอนเริ่มต้น
- Serial.println("🎚️ กำลังหมุนสแลนเข้าสู่สถานะปิด...");
- startMotor(false);  // false = หมุนเข้า (in)
- while(motorWorking){
-   handleMotor();
-   delay(10);
- }
- motorState = "in";
- saveState();
-
  Serial.println("\n🌿 SmartFarm V3.1 - Blynk Control + Web Monitor");
  Serial.println("========================================");
  Serial.printf("โหมดเริ่มต้น: %s\n", autoMode?"AUTO":"MANUAL");
+ Serial.printf("สถานะสแลนปัจจุบัน: %s\n", motorState=="out"?"เปิด":"ปิด");
  Serial.println("ควบคุมผ่าน: Blynk App");
  Serial.println("แสดงสถานะ: Web Server");
 }
