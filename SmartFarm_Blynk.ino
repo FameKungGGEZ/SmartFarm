@@ -149,7 +149,7 @@ void loadState(){
   spray       = prefs.getBool("spray",true);
   fan         = prefs.getBool("fan",true);
   shadeClosed = prefs.getBool("shadeClosed",false);
-  motorState  = prefs.getString("motorState","in");  // Default = "in" (ปิด)
+  motorState  = prefs.getString("motorState","out");
   prefs.end();
 }
 
@@ -410,6 +410,16 @@ void setup(){
 
  // เชื่อมต่อ Blynk
  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
+
+ // หมุนสแลนเข้าสู่สถานะปิด (in) เสมอตอนเริ่มต้น
+ Serial.println("🎚️ กำลังหมุนสแลนเข้าสู่สถานะปิด...");
+ startMotor(false);  // false = หมุนเข้า (in)
+ while(motorWorking){
+   handleMotor();
+   delay(10);
+ }
+ motorState = "in";
+ saveState();
 
  Serial.println("\n🌿 SmartFarm V3.1 - Blynk Control + Web Monitor");
  Serial.println("========================================");
